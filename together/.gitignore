@@ -1,0 +1,17 @@
+.mcp-request.json
+.lua-request.json
+share/
+release/
+phone-release/
+phone-install/
+*.zip
+verification-save/
+*.png
+sessions/
+session-release/
+session-final/
+session-bundle/
+sync-release/
+phone-update/
+*.pid
+*.log

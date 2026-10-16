@@ -1,0 +1,61 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.local.json
+*.pid
+*.log
+
+# Runtime dependencies and executables (ship through Releases, not Git)
+node_modules/
+node.exe
+*.exe
+*.dll
+__pycache__/
+*.py[cod]
+
+# Game saves, room snapshots and session data
+*.usvx
+**/SaveGames/
+**/share/
+**/sessions/
+**/saved/
+**/bridge/
+**/ui_trace/
+**/verification-save/
+
+# Generated packages and local build outputs
+*.zip
+*.7z
+*.pak
+*.utoc
+*.ucas
+**/release/
+**/phone-release/
+**/phone-install/
+**/phone-update/
+**/sync-release/
+**/session-release/
+**/session-final/
+**/session-bundle/
+Binaries/
+Intermediate/
+DerivedDataCache/
+Saved/
+
+# Local MCP inventories, requests and debugging screenshots
+/mcp-tools-*.json
+/together/lua-recipes.json
+**/.mcp-request.json
+**/.lua-request.json
+/together/*.png
+
+# Editor / OS files
+.vs/
+.idea/
+.vscode/
+*.suo
+*.user
+Thumbs.db
+Desktop.ini
+.DS_Store
