@@ -1,4 +1,4 @@
--- Bootstrap diagnostic only. No character control or networking is enabled here.
+-- Record simulation startup for connection diagnostics.
 local M = {}
 local function mark(value)
     pcall(function()

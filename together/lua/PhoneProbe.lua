@@ -1,5 +1,4 @@
--- One-shot integration probe for the two characters in the agreed test save.
--- This is not a network transport and does not hook unrelated phone messages.
+-- Local phone test for the original sample save.
 local M = {}
 
 ---@param self table

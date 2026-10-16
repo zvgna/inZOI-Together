@@ -1,2 +1,2 @@
--- Session bindings are configured after loading the host snapshot.
+-- The room interface initializes session bindings after loading a save.
 return {}
