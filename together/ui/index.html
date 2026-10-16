@@ -13,6 +13,8 @@
     <div id="status" role="status">Загрузка интерфейса…</div>
     <form id="connect-form">
       <label>Адрес сервера<input id="server" value="http://127.0.0.1:11214" maxlength="200" required></label>
+      <button id="check-network" type="button">Проверить связь с хостом</button>
+      <p id="network-status" class="footnote"></p>
       <div class="slot-label">Игрок</div>
       <div class="slot-picker"><button id="slot-one" class="slot-button selected" type="button" aria-pressed="true">Хост</button><button id="slot-two" class="slot-button" type="button" aria-pressed="false">Гость</button></div>
       <input id="slot" type="hidden" value="1">
@@ -25,6 +27,11 @@
     <section id="chat" hidden>
       <div class="row presence"><span id="players"></span><button id="disconnect" type="button">Отключиться</button></div>
       <section id="room-info">
+        <h3>Взаимодействия</h3>
+        <button id="action-greet" type="button">Поприветствовать</button>
+        <button id="action-handshake" type="button">Пожать руку</button>
+        <button id="action-hug" type="button">Обнять</button>
+        <p id="interaction-status" class="footnote">Действие проверяет хост. Для начала завершите текущие дела обоих персонажей.</p>
         <label>Персонаж гостя<select id="guest-character"></select></label>
         <button id="install-guest" type="button">Скачать сохранение и войти гостем</button>
         <button id="position-toggle" type="button">Включить синхронизацию координат</button>
@@ -63,6 +70,7 @@
 <script src="coui://inzoi/mod/inzoi-sdk.js"></script>
 <script src="window.js"></script>
 <script>window.onerror = function (message) { document.getElementById('status').textContent = 'Ошибка: ' + message; };</script>
+<script src="interactions.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

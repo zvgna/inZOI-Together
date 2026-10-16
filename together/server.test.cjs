@@ -61,7 +61,8 @@ test('two-player chat: authentication, slots, channels and invalid input', async
     return { status: response.status, data: await response.json() };
   }
   try {
-    assert.equal((await call('/health')).data.feature, 'chat-only');
+    assert.equal((await call('/health')).data.feature, 'room-prototype');
+    assert.equal((await call('/health')).data.protocol, 1);
     assert.equal((await call('/messages')).status, 401);
     assert.equal((await call('/join', { code: 'wrong', slot: 1, name: 'Тиана' })).status, 403);
     assert.equal((await call('/join', { code: 'test-room', slot: 3, name: 'Тиана' })).status, 400);

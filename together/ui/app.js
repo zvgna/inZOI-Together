@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
-  $('status').textContent = 'Интерфейс v0.5 загружен. Выберите Хост или Гость.';
+  $('status').textContent = 'Интерфейс v0.6 загружен. Выберите Хост или Гость.';
   function trace(key, value) {
     try {
       if (!window.inzoi || !window.inzoi.cli) return;
@@ -17,7 +17,19 @@
   var takeover = false;
   var room = null;
   var ownCharacter = 0, partnerCharacter = null;
+  var social=window.createTogetherInteractions({request:request,game:function(command,args){return window.inzoi.cli.execute(command,args);},cfg:cfg,data:resultData,value:configValue,context:function(){return {slot:slot,character:ownCharacter,generation:generation,connected:!!token&&!!ownCharacter&&!!window.inzoi};}});
   var hostSaves = [];
+  $('check-network').addEventListener('click',function(){
+    var address=$('server').value.trim().replace(/\/$/,'');
+    if(!/^http:\/\/(?:[a-z0-9.-]+|\[[a-f0-9:]+\])(?::\d{1,5})?$/i.test(address)){ $('network-status').textContent='Введите адрес хоста вида http://IP:11214';return; }
+    var samples=[],count=0; $('check-network').disabled=true;
+    function probe(){var started=Date.now();return request('GET','/health',null,null,address).then(function(data){
+      if(!data.ok||data.protocol!==1)throw new Error('Версии сервера и мода отличаются. Установите одинаковую сборку.');
+      samples.push(Date.now()-started);count++;$('network-status').textContent='Проверка связи: '+count+'/3';if(count<3)return probe();
+      $('network-status').textContent='Хост доступен. Среднее время ответа: '+Math.round(samples.reduce(function(a,b){return a+b;},0)/samples.length)+' мс';
+    });}
+    probe().catch(function(error){$('network-status').textContent=error.message+' Проверьте адрес VPN и доступ сервера в брандмауэре.';}).then(function(){$('check-network').disabled=false;});
+  });
   function helper(method, endpoint, payload) {
     if (!window.inzoi) return Promise.reject(new Error('Помощник используется через F2 внутри игры'));
     return cfg('load','helper_key').then(function (result) {
@@ -58,7 +70,7 @@
   }
   var positionEnabled = false, positionBusy = false, lastRemoteTime = 0, lastOwnPosition = '', ownPositionSeen = 0, lastSentId = 0;
   function positionTick(current) {
-    if (!positionEnabled || positionBusy || !window.inzoi || current !== generation) return;
+    if (!positionEnabled || positionBusy || social.held() || !window.inzoi || current !== generation) return;
     positionBusy = true;
     var own = ownCharacter;
     if (!own || !room || !room.save) { positionBusy = false; return; }
@@ -286,6 +298,7 @@
       if (data.messages.length) render();
       pumpPhone(current);
       dockPhone(current);
+      social.poll();
       positionTick(current);
       if (lastSentId && (data.receipts || []).some(function (r) { return r.id === lastSentId; })) $('phone-status').textContent = 'Телефон второго ПК подтвердил обработку сообщения.';
     }).catch(function (error) {

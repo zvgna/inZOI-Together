@@ -3,12 +3,14 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const {createActions}=require('./actions.cjs');
 
 function createRelay({ code = crypto.randomBytes(8).toString('hex'), shareDir = path.join(__dirname, 'share') } = {}) {
   const players = new Map();
   const messages = [];
   const receipts = new Map();
   const positions = new Map();
+  const actions=createActions();
   let sequence = 0;
   const tickets = new Map();
   function snapshot() {
@@ -27,7 +29,7 @@ function createRelay({ code = crypto.randomBytes(8).toString('hex'), shareDir = 
   }
   function prune() {
     for (const [slot, player] of players) {
-      if (Date.now() - player.seen > 60000) { players.delete(slot); positions.delete(slot); }
+      if (Date.now() - player.seen > 60000) { actions.cancel(); players.delete(slot); positions.delete(slot); }
     }
   }
   function send(res, status, value) {
@@ -63,7 +65,7 @@ function createRelay({ code = crypto.randomBytes(8).toString('hex'), shareDir = 
         const stream = fs.createReadStream(file);
         stream.on('error', () => res.destroy()); stream.pipe(res); return;
       }
-      const staticFiles = { '/': 'index.html', '/app.js': 'app.js', '/styles.css': 'styles.css', '/window.js': 'window.js' };
+      const staticFiles = { '/': 'index.html', '/app.js': 'app.js', '/interactions.js':'interactions.js', '/styles.css': 'styles.css', '/window.js': 'window.js' };
       if (req.method === 'GET' && staticFiles[url.pathname]) {
         const filename = staticFiles[url.pathname];
         const mime = filename.endsWith('.js') ? 'text/javascript' : filename.endsWith('.css') ? 'text/css' : 'text/html';
@@ -72,7 +74,7 @@ function createRelay({ code = crypto.randomBytes(8).toString('hex'), shareDir = 
         return;
       }
       if (req.method === 'GET' && url.pathname === '/health') {
-        send(res, 200, { ok: true, version: 1, feature: 'chat-only' }); return;
+        send(res, 200, { ok: true, version: 6, protocol: 1, feature: 'room-prototype' }); return;
       }
       prune();
       if (req.method === 'POST' && url.pathname === '/join') {
@@ -85,6 +87,7 @@ function createRelay({ code = crypto.randomBytes(8).toString('hex'), shareDir = 
         if (players.has(data.slot) && data.replace !== true) { send(res, 409, { error: 'Это место занято. Нажмите «Переподключить это место», чтобы отключить старое подключение.' }); return; }
         const player = { slot: data.slot, name: data.name.trim(), token: crypto.randomBytes(24).toString('hex'), seen: Date.now() };
         players.set(player.slot, player);
+        actions.cancel();
         positions.delete(player.slot);
         send(res, 200, { token: player.token, slot: player.slot, cursor: 0 }); return;
       }
@@ -92,6 +95,15 @@ function createRelay({ code = crypto.randomBytes(8).toString('hex'), shareDir = 
       const player = Array.from(players.values()).find(p => p.token === token);
       if (!player) { send(res, 401, { error: 'Подключитесь к комнате заново' }); return; }
       player.seen = Date.now();
+      if(req.method==='GET'&&url.pathname==='/actions'){send(res,200,{events:actions.list()});return;}
+      if(req.method==='POST'&&url.pathname==='/actions'){
+        const data=await body(req),a=positions.get(1),b=positions.get(2);
+        if(!a||!b||Date.now()-a.time>5000||Date.now()-b.time>5000){send(res,409,{error:'Включите синхронизацию координат на обоих ПК и снимите паузу'});return;}
+        if(a.world!==b.world||(a.x-b.x)**2+(a.y-b.y)**2+(a.z-b.z)**2>500**2){send(res,409,{error:'Подведите персонажей ближе друг к другу'});return;}
+        send(res,201,actions.request(player,players.get(3-player.slot),data.kind));return;
+      }
+      const actionRoute=url.pathname.match(/^\/actions\/([a-f0-9]{32})\/(resolve|ack)$/);
+      if(req.method==='POST'&&actionRoute){const data=await body(req);send(res,200,actionRoute[2]==='resolve'?actions.resolve(player,actionRoute[1],data):actions.acknowledge(player,actionRoute[1],data));return;}
       if (req.method === 'POST' && url.pathname === '/claim') {
         const data = await body(req), save = snapshot();
         const character = save && Array.isArray(save.characters) && save.characters.find(c => c.id === data.character);
@@ -99,6 +111,7 @@ function createRelay({ code = crypto.randomBytes(8).toString('hex'), shareDir = 
         const other = players.get(3-player.slot);
         if (other && other.character && other.character.household === character.household) { send(res,409,{error:'Эта семья уже занята другим игроком'}); return; }
         player.character = character; positions.delete(player.slot);
+        actions.cancel();
         send(res,200,{character}); return;
       }
       if (req.method === 'POST' && url.pathname === '/phone/ack') {
@@ -120,7 +133,7 @@ function createRelay({ code = crypto.randomBytes(8).toString('hex'), shareDir = 
       }
       if (req.method === 'GET' && url.pathname === '/positions') {
         const position = positions.get(3 - player.slot);
-        send(res, 200, { position: position && Date.now() - position.time < 3000 ? position : null }); return;
+        send(res, 200, { position: !actions.active() && position && Date.now() - position.time < 3000 ? position : null }); return;
       }
       if (req.method === 'GET' && url.pathname === '/room') {
         send(res, 200, roomInfo(server.address().port)); return;
@@ -136,7 +149,7 @@ function createRelay({ code = crypto.randomBytes(8).toString('hex'), shareDir = 
         send(res, 200, { path: '/download/' + ticket, expiresInSeconds: 300 }); return;
       }
       if (req.method === 'POST' && url.pathname === '/leave') {
-        positions.delete(player.slot); players.delete(player.slot); send(res, 200, { ok: true }); return;
+        actions.cancel(); positions.delete(player.slot); players.delete(player.slot); send(res, 200, { ok: true }); return;
       }
       if (req.method === 'GET' && url.pathname === '/messages') {
         const after = Number(url.searchParams.get('after') || 0);

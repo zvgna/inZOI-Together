@@ -107,7 +107,7 @@ if ($Mode -eq 'Host') {
         Relay '/leave' @{} | Out-Null
         $script:roomToken=''
         $archive=Join-Path ([IO.Path]::GetTempPath()) ('together-'+[guid]::NewGuid().ToString('N')+'.zip')
-        Invoke-WebRequest -UseBasicParsing -Uri ($Server+$ticket.path) -OutFile $archive -TimeoutSec 120
+        Invoke-WebRequest -UseBasicParsing -Uri ($Server+$ticket.path) -OutFile $archive -TimeoutSec 600
         $Folder=Get-Date -Format 'yyyyMMdd-HHmmss'
         & (Join-Path $PSScriptRoot 'install-save.ps1') -Archive $archive -ExpectedSha256 $room.save.sha256 -SaveRoot $SaveRoot -DestinationFolder $Folder | Out-Null
         $File=$room.save.file
