@@ -5,11 +5,14 @@
     var busy=false,seen={},closed={},held=false;
     function status(text){document.getElementById('interaction-status').textContent=text;}
     function game(command,args){return api.game(command,args).then(function(raw){if(raw===false||raw&&(raw.success===false||raw.ok===false||raw.isError))throw new Error(raw.error||raw.message||'Игра отклонила действие');var value=api.data(raw);if(value&&(value.success===false||value.isError))throw new Error(value.error||'Игра отклонила действие');return value||raw||{};});}
-    function execute(event,bag){
+    function ensureCurrent(context){var current=api.context();if(current.generation!==context.generation||!current.connected)throw new Error('Подключение изменилось. Старый запрос отменён.');}
+    function execute(event,bag,context){
+      ensureCurrent(context);
       return Promise.all([game('interaction.get_current',{entity_id:String(event.actor)}),game('interaction.get_current',{entity_id:String(event.target)})]).then(function(states){
+        ensureCurrent(context);
         if(states.some(function(state){return state.playing;}))throw new Error('Один из персонажей занят. Завершите его текущее действие.');
         return api.cfg('save','social_'+event.id,JSON.stringify({state:'dispatching',bag:bag}));
-      }).then(function(){return game('interaction.execute',{entity_id:String(event.actor),target_entity_id:String(event.target),interaction_bag_id:bag,insert_front:true});}).then(function(){return api.cfg('save','social_'+event.id,JSON.stringify({state:'queued',bag:bag}));});
+      }).then(function(){ensureCurrent(context);return game('interaction.execute',{entity_id:String(event.actor),target_entity_id:String(event.target),interaction_bag_id:bag,insert_front:true});}).then(function(){return api.cfg('save','social_'+event.id,JSON.stringify({state:'queued',bag:bag}));});
     }
     function process(event,context){
       var dispatched=false;
@@ -18,8 +21,9 @@
         if(!event.bag||event.state==='completed'||closed[event.id]||event.acks[context.slot]==='completed')return Promise.resolve();
         closed[event.id]=true;
         return api.cfg('load','social_'+event.id).then(function(result){
+          ensureCurrent(context);
           var raw=api.value(result);if(!raw||JSON.parse(raw).state!=='queued')return;
-          return game('interaction.get_current',{entity_id:String(event.actor)}).then(function(current){if(current.playing&&current.interaction_bag_id===event.bag)return game('interaction.cancel',{entity_id:String(event.actor)});});
+          return game('interaction.get_current',{entity_id:String(event.actor)}).then(function(current){ensureCurrent(context);if(current.playing&&current.interaction_bag_id===event.bag)return game('interaction.cancel',{entity_id:String(event.actor)});});
         });
       }
       if(event.state==='requested'&&context.slot!==1)return Promise.resolve();
@@ -32,15 +36,15 @@
             var match=(result.interactions||[]).filter(function(item){return item.enabled&&patterns[event.kind].test(item.interaction_bag_id);})[0];
             if(!match)throw new Error('Это взаимодействие сейчас недоступно для выбранной пары');return match.interaction_bag_id;
           });
-          return choose.then(function(bag){return(saved?Promise.resolve():execute(event,bag)).then(function(){dispatched=true;return api.request('POST','/actions/'+event.id+'/resolve',{state:'queued',bag:bag});});});
+          return choose.then(function(bag){ensureCurrent(context);return(saved?Promise.resolve():execute(event,bag,context)).then(function(){ensureCurrent(context);dispatched=true;return api.request('POST','/actions/'+event.id+'/resolve',{state:'queued',bag:bag});});});
         }
-        if(!saved)return execute(event,event.bag);
+        if(!saved)return execute(event,event.bag,context);
         return game('interaction.get_current',{entity_id:String(event.actor)}).then(function(current){
           if(current.playing&&current.interaction_bag_id===event.bag){seen[event.id]=true;status('Взаимодействие выполняется');return api.request('POST','/actions/'+event.id+'/ack',{state:'started'});}
           if(seen[event.id]){status('Ожидаем завершения на втором ПК');return api.request('POST','/actions/'+event.id+'/ack',{state:'completed'});}
           status('Действие принято. Ожидаем начала в игре.');
         });
-      }).catch(function(error){status(error.message);if(dispatched)return;return api.request('POST','/actions/'+event.id+(event.state==='requested'?'/resolve':'/ack'),{state:event.state==='requested'?'rejected':'failed',reason:error.message});});
+      }).catch(function(error){if(api.context().generation!==context.generation||!api.context().connected)return;status(error.message);if(dispatched)return;return api.request('POST','/actions/'+event.id+(event.state==='requested'?'/resolve':'/ack'),{state:event.state==='requested'?'rejected':'failed',reason:error.message});});
     }
     ['greet','handshake','hug'].forEach(function(kind){document.getElementById('action-'+kind).addEventListener('click',function(){api.request('POST','/actions',{kind:kind}).then(function(){status('Запрос отправлен хосту');}).catch(function(error){status(error.message);});});});
     return {held:function(){return held;},poll:function(){

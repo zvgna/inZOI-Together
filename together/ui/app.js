@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
-  $('status').textContent = 'Интерфейс v0.6 загружен. Выберите Хост или Гость.';
+  $('status').textContent = 'Интерфейс v0.7 загружен. Выберите Хост или Гость.';
   function trace(key, value) {
     try {
       if (!window.inzoi || !window.inzoi.cli) return;
@@ -17,6 +17,15 @@
   var takeover = false;
   var room = null;
   var ownCharacter = 0, partnerCharacter = null;
+  var connection=window.createTogetherConnection({request:request,status:status,setTimer:setTimeout,clearTimer:clearTimeout,
+    load:function(){return window.inzoi?cfg('load','connection').then(configValue):Promise.resolve('');},
+    store:function(value){return window.inzoi?cfg('save','connection',value):Promise.resolve();},
+    begin:function(){
+      clearTimeout(timer);token='';pending=true;positionEnabled=false;ownCharacter=0;partnerCharacter=null;phoneQueue=[];
+      $('connect').disabled=true;$('cancel-reconnect').style.display='block';$('connection-actions').removeAttribute('hidden');$('connection-actions').style.display='';
+      return ++generation;
+    },accept:acceptSession,failed:function(message){reset();status(message,true);}
+  });
   var social=window.createTogetherInteractions({request:request,game:function(command,args){return window.inzoi.cli.execute(command,args);},cfg:cfg,data:resultData,value:configValue,context:function(){return {slot:slot,character:ownCharacter,generation:generation,connected:!!token&&!!ownCharacter&&!!window.inzoi};}});
   var hostSaves = [];
   $('check-network').addEventListener('click',function(){
@@ -24,7 +33,7 @@
     if(!/^http:\/\/(?:[a-z0-9.-]+|\[[a-f0-9:]+\])(?::\d{1,5})?$/i.test(address)){ $('network-status').textContent='Введите адрес хоста вида http://IP:11214';return; }
     var samples=[],count=0; $('check-network').disabled=true;
     function probe(){var started=Date.now();return request('GET','/health',null,null,address).then(function(data){
-      if(!data.ok||data.protocol!==1)throw new Error('Версии сервера и мода отличаются. Установите одинаковую сборку.');
+      if(!data.ok||data.protocol!==2)throw new Error('Версии сервера и мода отличаются. Установите одинаковую сборку.');
       samples.push(Date.now()-started);count++;$('network-status').textContent='Проверка связи: '+count+'/3';if(count<3)return probe();
       $('network-status').textContent='Хост доступен. Среднее время ответа: '+Math.round(samples.reduce(function(a,b){return a+b;},0)/samples.length)+' мс';
     });}
@@ -172,13 +181,13 @@
     cfg('load', 'ack_' + uid).catch(function () { return null; }).then(function (result) {
       if (current !== generation) return;
       if (configValue(result) === '1') {
-        if (message.to === slot) return request('POST', '/phone/ack', {id:message.id}, token).then(function () { phoneQueue.shift(); $('phone-status').textContent = 'Входящее сообщение обработано телефоном; подтверждение отправлено.'; });
+        if (message.to === slot) return request('POST', '/phone/ack', {id:message.id}, token).then(function () { if(current!==generation)return;phoneQueue.shift(); $('phone-status').textContent = 'Входящее сообщение обработано телефоном; подтверждение отправлено.'; });
         phoneQueue.shift(); $('phone-status').textContent = 'Исходящее записано в местный телефон. Ждём подтверждения второго ПК.'; return;
       }
       return cfg('save', 'inbox' + ownCharacter, phonePayload(message)).then(function () {
         if (current === generation) $('phone-status').textContent = 'Текст передан Lua-мосту. Ожидаем подтверждение телефона…';
       });
-    }).catch(function (error) { if (current === generation) $('phone-status').textContent = 'Доставка в телефон: ' + (error.message || String(error)); }).then(function () { phoneBusy = false; });
+    }).catch(function (error) { if (current === generation) $('phone-status').textContent = 'Доставка в телефон: ' + (error.message || String(error)); }).then(function () { if(current===generation)phoneBusy = false; });
   }
   if (window.location && window.location.protocol === 'http:') $('server').value = window.location.origin;
   function status(text, error) { $('status').textContent = text; $('status').className = error ? 'error' : ''; }
@@ -226,6 +235,7 @@
     $('phone-note').hidden = channel !== 'phone'; render();
   }
   function reset() {
+    connection.cancel();$('cancel-reconnect').style.display='none';
     positionEnabled = false; lastRemoteTime = 0;
     ownCharacter = 0; partnerCharacter = null;
     $('connection-actions').style.display = ''; $('connect-form').style.display = '';
@@ -247,6 +257,7 @@
     request('GET', '/room', null, token).then(function (data) {
       if (current !== generation) return;
       room = data; addressFor('lan');
+      if(data.code)$('code').value=data.code;
       var select=$('guest-character');select.textContent='';
       ((data.save && data.save.characters)||[]).forEach(function(character){var option=document.createElement('option');option.value=String(character.id);option.textContent=character.name+' · семья '+character.household;select.appendChild(option);});
       if (window.inzoi && data.save && Array.isArray(data.save.characters)) {
@@ -303,7 +314,7 @@
       if (lastSentId && (data.receipts || []).some(function (r) { return r.id === lastSentId; })) $('phone-status').textContent = 'Телефон второго ПК подтвердил обработку сообщения.';
     }).catch(function (error) {
       if (current !== generation) return;
-      if (error.status === 401) reset();
+      if (error.status === 401) { connection.resume(); return; }
       status(error.message, true);
     }).then(function () { if (token && current === generation) timer = setTimeout(function () { poll(current); }, 1000); });
   }
@@ -315,19 +326,30 @@
     if (!/^http:\/\/(?:[a-z0-9.-]+|\[[a-f0-9:]+\])(?::\d{1,5})?$/i.test(address)) { status('Введите адрес вида http://192.168.1.10:11214', true); return; }
     pending = true; ownCharacter = 0; partnerCharacter = null; positionEnabled = false; $('connect').disabled = true; status('Подключение…');
     var current = ++generation;
-    request('POST', '/join', { code: $('code').value.trim(), slot: Number($('slot').value), name: $('name').value.trim(), replace: replace === true || takeover }, null, address).then(function (data) {
-      if (current !== generation) return;
-      base = address; token = data.token; slot = data.slot; cursor = data.cursor; history = []; unread = { global: 0, phone: 0 };
-      $('connection-actions').hidden = true; $('phone-composer').hidden = false; $('reconnect').hidden = true; $('connect-form').hidden = true; $('chat').hidden = false; pending = false; selectChannel('phone'); loadRoom(current); poll(current);
-      $('connection-actions').style.display = 'none'; $('connect-form').style.display = 'none';
-      $('chat').removeAttribute('hidden'); $('phone-composer').removeAttribute('hidden');
+    connection.forget().then(function(){if(current!==generation)return null;return request('GET','/health',null,null,address);}).then(function(health){
+      if(!health||current!==generation)return null;
+      if(health.protocol!==2)throw new Error('Установите одинаковую сборку мода на обоих ПК.');
+      return request('POST', '/join', { code: $('code').value.trim(), slot: Number($('slot').value), name: $('name').value.trim(), replace: replace === true || takeover }, null, address);
+    }).then(function (data) {
+      if(!data)return;
+      if (current !== generation) {request('POST','/leave',{},data.token,address).catch(function(){});return;}
+      return connection.remember(address,data).catch(function(){status('Не удалось сохранить ключ восстановления',true);}).then(function(){acceptSession(data,address,current);});
     }).catch(function (error) { if (current === generation) { pending = false; $('connect').disabled = false; takeover = error.status === 409; $('connect').textContent = takeover ? 'Переподключить это место' : 'Подключиться'; $('reconnect').hidden = true; status(takeover ? 'Место занято старым подключением. Нажмите «Переподключить это место» внизу окна.' : error.message, true); } });
   }
+  function acceptSession(data,address,current){
+    if(current!==generation)return;
+    $('server').value=address;
+    base=address;token=data.token;slot=data.slot;cursor=data.cursor;history=[];phoneQueue=[];phoneBusy=false;unread={global:0,phone:0};
+    $('cancel-reconnect').style.display='none';$('connection-actions').hidden=true;$('phone-composer').hidden=false;$('reconnect').hidden=true;$('connect-form').hidden=true;$('chat').hidden=false;
+    $('connection-actions').style.display='none';$('connect-form').style.display='none';$('chat').removeAttribute('hidden');$('phone-composer').removeAttribute('hidden');
+    pending=false;pickSlot(slot);selectChannel('phone');loadRoom(current);poll(current);
+  }
+  $('cancel-reconnect').addEventListener('click',function(){connection.forget().catch(function(){});reset();status('Восстановление отменено. Можно подключиться вручную.');});
   $('connect-form').addEventListener('submit', connect);
   $('connect').addEventListener('click', connect);
   $('reconnect').addEventListener('click', function (event) { connect(event, true); });
   $('disconnect').addEventListener('click', function () {
-    var oldToken = token; reset();
+    var oldToken = token; connection.forget().catch(function(){}); reset();
     request('POST', '/leave', {}, oldToken).catch(function () {}); status('Отключено');
   });
   function pickSlot(value) {
@@ -364,7 +386,7 @@
   if (window.inzoi && window.inzoi.trigger) {
     cfg('load','bootstrap').then(function (result) {
       var raw = configValue(result);
-      if (!raw) return;
+      if (!raw) return connection.restore();
       var setup = JSON.parse(raw);
       if (setup.slot !== 1 && setup.slot !== 2) return;
       $('server').value = setup.server; $('code').value = setup.code; pickSlot(setup.slot);

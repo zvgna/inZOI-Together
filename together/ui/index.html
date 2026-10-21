@@ -58,6 +58,7 @@
   </div>
   <div id="connection-actions">
     <button class="primary" id="connect" type="button">Подключиться</button>
+    <button id="cancel-reconnect" type="button" style="display:none">Отменить восстановление</button>
     <button id="reconnect" type="button" hidden>Переподключить это место</button>
   </div>
   <div id="phone-composer" hidden>
@@ -71,6 +72,7 @@
 <script src="window.js"></script>
 <script>window.onerror = function (message) { document.getElementById('status').textContent = 'Ошибка: ' + message; };</script>
 <script src="interactions.js"></script>
+<script src="connection.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
