@@ -11,6 +11,10 @@ Get-NetAdapter -Name $InterfaceAlias -ErrorAction Stop | Out-Null
 $node=Join-Path $PSScriptRoot 'node.exe'
 if(-not(Test-Path -LiteralPath $node)){$node=(Get-Command node -ErrorAction Stop).Source}
 $name='InZOITogether-11214-'+($PeerAddress -replace '\.','-')
-if(Get-NetFirewallRule -Name $name -ErrorAction SilentlyContinue){Write-Output 'Rule already exists';return}
-New-NetFirewallRule -Name $name -DisplayName ('inZOI Together - '+$PeerAddress) -Direction Inbound -Action Allow -Protocol TCP -LocalPort 11214 -RemoteAddress $PeerAddress -InterfaceAlias $InterfaceAlias -Program $node -Profile Any | Out-Null
-Write-Output 'Access granted to this peer on the VPN adapter, TCP 11214.'
+if(-not(Get-NetFirewallRule -Name $name -ErrorAction SilentlyContinue)){
+    New-NetFirewallRule -Name $name -DisplayName ('inZOI Together - '+$PeerAddress) -Direction Inbound -Action Allow -Protocol TCP -LocalPort 11214 -RemoteAddress $PeerAddress -InterfaceAlias $InterfaceAlias -Program $node -Profile Any | Out-Null
+}
+if(-not(Get-NetFirewallRule -Name ($name+'-discovery') -ErrorAction SilentlyContinue)){
+    New-NetFirewallRule -Name ($name+'-discovery') -DisplayName ('inZOI Together discovery - '+$PeerAddress) -Direction Inbound -Action Allow -Protocol UDP -LocalPort 11216 -RemoteAddress $PeerAddress -InterfaceAlias $InterfaceAlias -Program $node -Profile Any | Out-Null
+}
+Write-Output 'Access granted to this peer on the VPN adapter, TCP 11214 and UDP 11216.'

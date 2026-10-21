@@ -9,24 +9,33 @@
 <div id="app-root">
   <div id="title-bar"><span id="title-text">inZOI Together</span><div id="title-buttons"><span id="minimize-btn" style="display:none">_</span><button id="close-btn" type="button" aria-label="Закрыть">×</button></div></div>
   <div id="content">
-    <p class="subtitle">Комната по локальной сети · прототип 0.2</p>
+    <p class="subtitle">Комната по локальной сети · тест 0.8.1</p>
     <div id="status" role="status">Загрузка интерфейса…</div>
     <form id="connect-form">
+      <button id="list-host-saves" type="button">Хост: выбрать сохранение</button>
+      <div id="host-save-list" role="group" aria-label="Сохранения хоста"></div>
+      <button id="prepare-host" type="button">Загрузить сохранение и создать комнату</button>
       <label>Адрес сервера<input id="server" value="http://127.0.0.1:11214" maxlength="200" required></label>
       <button id="check-network" type="button">Проверить связь с хостом</button>
+      <button id="find-host" type="button">Найти хоста в Radmin / LAN</button>
       <p id="network-status" class="footnote"></p>
       <div class="slot-label">Игрок</div>
       <div class="slot-picker"><button id="slot-one" class="slot-button selected" type="button" aria-pressed="true">Хост</button><button id="slot-two" class="slot-button" type="button" aria-pressed="false">Гость</button></div>
       <input id="slot" type="hidden" value="1">
       <label>Имя в чате<input id="name" value="Хост" maxlength="40" required></label>
       <label>Код комнаты<input id="code" type="password" maxlength="100" autocomplete="off" required></label>
-      <button id="list-host-saves" type="button">Хост: выбрать сохранение</button>
-      <select id="host-save" aria-label="Сохранение хоста"></select>
-      <button id="prepare-host" type="button">Загрузить сохранение и создать комнату</button>
     </form>
     <section id="chat" hidden>
       <div class="row presence"><span id="players"></span><button id="disconnect" type="button">Отключиться</button></div>
+      <label>Код комнаты для гостя<input id="share-room-code" readonly aria-label="Код комнаты для гостя"></label>
       <section id="room-info">
+        <h3>Управление в игре хоста · тест</h3>
+        <button id="authority-start" type="button">Передать персонажа гостю</button>
+        <button id="authority-stop" type="button">Вернуть управление ИИ</button>
+        <button id="authority-list" type="button">Получить действия с другим игроком</button>
+        <select id="authority-bag" aria-label="Действие в мире хоста"></select>
+        <button id="authority-send" type="button">Выполнить у хоста</button>
+        <p id="authority-status" class="footnote">Тест выполнения действий в мире хоста. Обычные клики гостя и состояние его мира ещё не синхронизируются.</p>
         <h3>Взаимодействия</h3>
         <button id="action-greet" type="button">Поприветствовать</button>
         <button id="action-handshake" type="button">Пожать руку</button>
@@ -73,6 +82,7 @@
 <script>window.onerror = function (message) { document.getElementById('status').textContent = 'Ошибка: ' + message; };</script>
 <script src="interactions.js"></script>
 <script src="connection.js"></script>
+<script src="authority.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

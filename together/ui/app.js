@@ -1,13 +1,13 @@
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
-  $('status').textContent = 'Интерфейс v0.7 загружен. Выберите Хост или Гость.';
+  $('status').textContent = 'Интерфейс v0.8.1 загружен. Выберите Хост или Гость.';
   function trace(key, value) {
     try {
       if (!window.inzoi || !window.inzoi.cli) return;
       var raw = unescape(encodeURIComponent(String(value))), hex = '';
       for (var n = 0; n < raw.length; n++) hex += ('0' + raw.charCodeAt(n).toString(16)).slice(-2);
-      window.inzoi.cli.execute('uimod.cfg_save', {mod_id:'InZOITogether_CFE6AC67',section:'ui_trace',key:key,value:hex}).catch(function () {});
+      window.inzoi.cli.execute('uimod.cfg_save', {mod_id:'InZOITogether_CFE6AC67',Section:'ui_trace',Key:key,Value:hex}).catch(function () {});
     } catch (_) {}
   }
   window.addEventListener('error', function (event) { $('status').textContent = 'Ошибка интерфейса: ' + event.message; trace('error', event.message); });
@@ -17,6 +17,7 @@
   var takeover = false;
   var room = null;
   var ownCharacter = 0, partnerCharacter = null;
+  var authority=window.createTogetherAuthority({request:request,helper:helper,game:function(command,args){return window.inzoi.cli.execute(command,args);},data:resultData,context:function(){return {connected:!!token&&!!ownCharacter&&!!window.inzoi,slot:slot,server:base,token:token,character:ownCharacter,partner:partnerCharacter,generation:generation};}});
   var connection=window.createTogetherConnection({request:request,status:status,setTimer:setTimeout,clearTimer:clearTimeout,
     load:function(){return window.inzoi?cfg('load','connection').then(configValue):Promise.resolve('');},
     store:function(value){return window.inzoi?cfg('save','connection',value):Promise.resolve();},
@@ -27,7 +28,14 @@
     },accept:acceptSession,failed:function(message){reset();status(message,true);}
   });
   var social=window.createTogetherInteractions({request:request,game:function(command,args){return window.inzoi.cli.execute(command,args);},cfg:cfg,data:resultData,value:configValue,context:function(){return {slot:slot,character:ownCharacter,generation:generation,connected:!!token&&!!ownCharacter&&!!window.inzoi};}});
-  var hostSaves = [];
+  var hostSaves = [], selectedHostSave=-1;
+  $('find-host').addEventListener('click',function(){
+    $('find-host').disabled=true;
+    helper('GET','/discover').then(function(data){
+      if(data.hosts.length===1){$('server').value=data.hosts[0].url;pickSlot(2);status('Хост найден. Введите код его комнаты и подключитесь.');}
+      else status(data.hosts.length?'Найдено несколько хостов. Укажите адрес нужной комнаты.':'Хост не найден. Создайте комнату на первом ПК и проверьте Radmin и брандмауэр.',true);
+    }).catch(function(error){status(error.message,true);}).then(function(){$('find-host').disabled=false;});
+  });
   $('check-network').addEventListener('click',function(){
     var address=$('server').value.trim().replace(/\/$/,'');
     if(!/^http:\/\/(?:[a-z0-9.-]+|\[[a-f0-9:]+\])(?::\d{1,5})?$/i.test(address)){ $('network-status').textContent='Введите адрес хоста вида http://IP:11214';return; }
@@ -47,27 +55,32 @@
       return new Promise(function (resolve,reject) {
         var xhr=new XMLHttpRequest(); xhr.open(method,'http://127.0.0.1:11215'+endpoint,true);xhr.timeout=10000;
         xhr.setRequestHeader('X-Together-Key',key);xhr.setRequestHeader('Content-Type','application/json');
-        xhr.onload=function(){try{var data=JSON.parse(xhr.responseText);if(xhr.status>=200&&xhr.status<300)resolve(data);else reject(new Error(data.error));}catch(e){reject(e);}};
+        xhr.onload=function(){
+          if(!xhr.status||!xhr.responseText||!xhr.responseText.trim()){reject(new Error('Локальный помощник не отвечает. Запустите start-helper.cmd на этом ПК.'));return;}
+          var data;try{data=JSON.parse(xhr.responseText);}catch(_){reject(new Error('Помощник вернул неполный ответ. Перезапустите start-helper.cmd.'));return;}
+          if(xhr.status>=200&&xhr.status<300)resolve(data);else reject(new Error(data.error||('Ошибка помощника: HTTP '+xhr.status)));
+        };
         xhr.onerror=xhr.ontimeout=function(){reject(new Error('Локальный помощник недоступен. Запустите start-helper.cmd'));};
         xhr.send(payload?JSON.stringify(payload):null);
       });
     });
   }
   function startSession(payload) {
+    if(!window.inzoi){status('Создание комнаты запускается через F2 внутри игры.',true);return;}
     helper('POST','/jobs',payload).then(function (job) {
-      status('Помощник устанавливает и загружает сохранение. После загрузки откройте F2.');
-      function check(){helper('GET','/jobs/'+job.id).then(function(result){if(result.state==='running')setTimeout(check,1500);else status(result.state==='done'?'Сохранение загружено. Откройте F2.':result.output,result.state!=='done');}).catch(function(error){status(error.message,true);});}
+      status('Выбор запомнен. Сохраните игру и выйдите в главное меню. Помощник сам продолжит загрузку; открывать мод в меню не нужно.');
+      function check(){helper('GET','/jobs/'+job.id).then(function(result){if(result.state==='running'||result.state==='waiting'){status(result.output);setTimeout(check,1500);}else status(result.state==='done'?'Сохранение загружено. Откройте F2.':result.output,result.state!=='done');}).catch(function(error){status(error.message,true);});}
       check();
     }).catch(function(error){status(error.message,true);});
   }
   $('list-host-saves').addEventListener('click',function(){
     helper('GET','/saves').then(function(data){
-      hostSaves=data.saves;var select=$('host-save');select.textContent='';
-      hostSaves.forEach(function(save,index){var option=document.createElement('option');option.value=String(index);option.textContent=save.slot+' · '+save.saved_time;select.appendChild(option);});
-      status('Выберите сохранение. Для его загрузки сначала выйдите в главное меню.');
+      hostSaves=data.saves;selectedHostSave=-1;var list=$('host-save-list');list.textContent='';
+      hostSaves.forEach(function(save,index){var button=document.createElement('button');button.type='button';button.className='save-choice';button.textContent=save.slot+' · '+save.saved_time;button.addEventListener('click',function(){selectedHostSave=index;var buttons=list.querySelectorAll('button');for(var i=0;i<buttons.length;i++)buttons[i].className='save-choice'+(i===index?' selected':'');status('Выбрано: '+save.slot);});list.appendChild(button);});
+      status('Выберите сохранение и нажмите «Загрузить сохранение и создать комнату». Затем сохраните текущую игру и выйдите в главное меню.');
     }).catch(function(error){status(error.message,true);});
   });
-  $('prepare-host').addEventListener('click',function(){var save=hostSaves[Number($('host-save').value)];if(!save){status('Сначала выберите сохранение',true);return;}startSession({mode:'Host',folder:save.folder,file:save.file});});
+  $('prepare-host').addEventListener('click',function(){var save=hostSaves[selectedHostSave];if(!save){status('Сначала выберите сохранение',true);return;}startSession({mode:'Host',folder:save.folder,file:save.file});});
   $('install-guest').addEventListener('click',function(){
     if(slot!==2||!token){status('Выберите роль «Гость» и подключитесь к комнате',true);return;}
     startSession({mode:'Guest',server:base,token:token,character:Number($('guest-character').value)});
@@ -158,9 +171,12 @@
     return null;
   }
   function cfg(action, key, value) {
-    var params = { mod_id:'InZOITogether_CFE6AC67', section:'bridge', key:key };
-    if (value !== undefined) params.value = value;
-    if (action === 'load') return window.inzoi.cli.execute('uimod.cfg_load', params);
+    var params = { mod_id:'InZOITogether_CFE6AC67', Section:'bridge', Key:key };
+    if (value !== undefined) params.Value = value;
+    if (action === 'load') return window.inzoi.cli.execute('uimod.cfg_load', params).catch(function(error){
+      if (/Key not found:/i.test(error.message || String(error))) return {value:''};
+      throw error;
+    });
     return window.inzoi.cli.execute('uimod.cfg_save', params);
   }
   function phoneUid(message) {
@@ -235,6 +251,8 @@
     $('phone-note').hidden = channel !== 'phone'; render();
   }
   function reset() {
+    $('app-root').removeAttribute('data-connected');
+    authority.reset();
     connection.cancel();$('cancel-reconnect').style.display='none';
     positionEnabled = false; lastRemoteTime = 0;
     ownCharacter = 0; partnerCharacter = null;
@@ -257,7 +275,7 @@
     request('GET', '/room', null, token).then(function (data) {
       if (current !== generation) return;
       room = data; addressFor('lan');
-      if(data.code)$('code').value=data.code;
+      if(data.code){$('code').value=data.code;$('share-room-code').value=data.code;}
       var select=$('guest-character');select.textContent='';
       ((data.save && data.save.characters)||[]).forEach(function(character){var option=document.createElement('option');option.value=String(character.id);option.textContent=character.name+' · семья '+character.household;select.appendChild(option);});
       if (window.inzoi && data.save && Array.isArray(data.save.characters)) {
@@ -309,8 +327,10 @@
       if (data.messages.length) render();
       pumpPhone(current);
       dockPhone(current);
-      social.poll();
-      positionTick(current);
+      authority.poll().then(function(){
+        if(current!==generation)return;
+        if(!authority.enabled()){social.poll();positionTick(current);}
+      });
       if (lastSentId && (data.receipts || []).some(function (r) { return r.id === lastSentId; })) $('phone-status').textContent = 'Телефон второго ПК подтвердил обработку сообщения.';
     }).catch(function (error) {
       if (current !== generation) return;
@@ -338,6 +358,7 @@
   }
   function acceptSession(data,address,current){
     if(current!==generation)return;
+    $('app-root').setAttribute('data-connected','true');
     $('server').value=address;
     base=address;token=data.token;slot=data.slot;cursor=data.cursor;history=[];phoneQueue=[];phoneBusy=false;unread={global:0,phone:0};
     $('cancel-reconnect').style.display='none';$('connection-actions').hidden=true;$('phone-composer').hidden=false;$('reconnect').hidden=true;$('connect-form').hidden=true;$('chat').hidden=false;
@@ -362,7 +383,7 @@
     $('slot-two').setAttribute('aria-pressed', String(value === 2));
   }
   $('slot-one').addEventListener('click', function () { pickSlot(1); });
-  $('slot-two').addEventListener('click', function () { pickSlot(2); });
+  $('slot-two').addEventListener('click', function () { pickSlot(2); $('find-host').click(); });
   $('global-tab').addEventListener('click', function () { selectChannel('global'); });
   $('phone-tab').addEventListener('click', function () { selectChannel('phone'); });
   function sendMessage(event) {

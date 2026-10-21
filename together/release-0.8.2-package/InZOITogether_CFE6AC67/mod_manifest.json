@@ -1,0 +1,47 @@
+﻿{
+  "FriendlyName": "InZOITogether",
+  "ProjectName": "InZOITogether_CFE6AC67",
+  "Description": "Experimental LAN chat and two-household cooperation prototype",
+  "Author": "ModAuthor",
+  "Version": "20261011.16078.W.MODKIT.EGS",
+  "Url": "",
+  "Dependencies": [],
+  "Assets": [],
+  "Maps": [],
+  "NonAssets": [
+    "/ui/uimod_apps.json",
+    "/ui/together_chat/app.js",
+    "/ui/together_chat/authority.js",
+    "/ui/together_chat/connection.js",
+    "/ui/together_chat/index.html",
+    "/ui/together_chat/interactions.js",
+    "/ui/together_chat/styles.css",
+    "/ui/together_chat/uimod_manifest.json",
+    "/ui/together_chat/window.js",
+    "/lua/B1/Main.lua",
+    "/lua/B2/Main.lua",
+    "/lua/B1/Zoi/PhoneBridge.lua",
+    "/lua/B2/Zoi/PhoneProbe.lua",
+    "/lua/lua_manifest.json"
+  ],
+  "FileChecksums": [
+    "lua/lua_manifest.json|88d1bb9edfe920b6e9c6cf1bb92563d1",
+    "ui/uimod_apps.json|b2a86816d680f7e0f7081e0a01df28c5",
+    "lua/B1/Main.lua|c50e4e2d1013c4dbc0bf4cb7f7c19dcd",
+    "lua/B2/Main.lua|bc5d57e13178a91896e55e1facf686c1",
+    "ui/together_chat/app.js|b703e0295bccdad6da4027419e621d7c",
+    "ui/together_chat/authority.js|6edb06bdbc282339c9670569882301bf",
+    "ui/together_chat/connection.js|4059635c44bf2b6060891d353eea52fc",
+    "ui/together_chat/index.html|0546a40c350a8e4b463bfcdfc22dc446",
+    "ui/together_chat/interactions.js|bafe11e754c526b541e130ab2bf03afc",
+    "ui/together_chat/styles.css|0cfda145632fbdd420649273b4a5e92a",
+    "ui/together_chat/window.js|9c5cea1d6a9ebca0f53b0fbbea06e06f",
+    "lua/B1/Zoi/PhoneBridge.lua|8826fd37522b1aa39cf60e159063d155",
+    "lua/B2/Zoi/PhoneProbe.lua|34d5e6c24b3f8cc870f61c43c5f09461"
+  ],
+  "bEnable": true,
+  "PackageTime": "2026-10-21T15:23:01.1426536Z",
+  "Protected": [
+    "/lua"
+  ]
+}

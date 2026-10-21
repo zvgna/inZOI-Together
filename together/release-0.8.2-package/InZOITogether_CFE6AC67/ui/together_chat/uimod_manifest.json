@@ -1,0 +1,18 @@
+﻿{
+  "display": {
+    "width": 1920,
+    "height": 1080,
+    "transparent": true,
+    "input_policy": "overlay"
+  },
+  "encoded": true,
+  "entry": "index.html",
+  "name": "inZOI Together",
+  "triggers": [
+    {
+      "id": "together_toggle",
+      "type": "keybind",
+      "key": "F2"
+    }
+  ]
+}

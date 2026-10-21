@@ -69,7 +69,7 @@ function createRelay({ code = crypto.randomBytes(8).toString('hex'), shareDir = 
         const stream = fs.createReadStream(file);
         stream.on('error', () => res.destroy()); stream.pipe(res); return;
       }
-      const staticFiles = { '/': 'index.html', '/app.js': 'app.js', '/interactions.js':'interactions.js', '/connection.js':'connection.js', '/styles.css': 'styles.css', '/window.js': 'window.js' };
+      const staticFiles = { '/': 'index.html', '/app.js': 'app.js', '/interactions.js':'interactions.js', '/connection.js':'connection.js', '/authority.js':'authority.js', '/styles.css': 'styles.css', '/window.js': 'window.js' };
       if (req.method === 'GET' && staticFiles[url.pathname]) {
         const filename = staticFiles[url.pathname];
         const mime = filename.endsWith('.js') ? 'text/javascript' : filename.endsWith('.css') ? 'text/css' : 'text/html';
@@ -78,7 +78,7 @@ function createRelay({ code = crypto.randomBytes(8).toString('hex'), shareDir = 
         return;
       }
       if (req.method === 'GET' && url.pathname === '/health') {
-        send(res, 200, { ok: true, version: 7, protocol: 2, feature: 'room-prototype' }); return;
+        send(res, 200, { ok: true, version: 8, protocol: 2, feature: 'room-prototype', authorityCommands:true }); return;
       }
       prune();
       if (req.method === 'POST' && url.pathname === '/resume') {
@@ -113,7 +113,9 @@ function createRelay({ code = crypto.randomBytes(8).toString('hex'), shareDir = 
         if (url.pathname === '/authority' && req.method === 'POST' && data.enabled === true && actions.list().some(event => ['requested','queued'].includes(event.state))) {
           send(res,409,{error:'Сначала завершите текущее сетевое взаимодействие'}); return;
         }
-        send(res,200,authority.handle(player,players,req.method,url.pathname,data)); return;
+        const result=authority.handle(player,players,req.method,url.pathname,data);
+        if(url.pathname==='/authority'&&req.method==='POST'&&data.enabled===true)positions.clear();
+        send(res,200,result); return;
       }
       if (authority.active(players) && (url.pathname === '/positions' || url.pathname === '/actions' || url.pathname.startsWith('/actions/'))) {
         send(res,409,{error:'Передача управления активна; прежняя синхронизация отключена'}); return;
@@ -206,10 +208,13 @@ function createRelay({ code = crypto.randomBytes(8).toString('hex'), shareDir = 
 }
 
 if (require.main === module) {
+  const {startResponder}=require('./discovery.cjs');
   const port = Number(process.env.TOGETHER_PORT || 11214);
   const { server, code } = createRelay({ code: process.env.TOGETHER_CODE || undefined, shareDir: process.env.TOGETHER_SHARE_DIR || undefined });
   server.on('error', error => { console.error('Не удалось запустить сервер:', error.message); process.exitCode = 1; });
   server.listen(port, '0.0.0.0', () => {
+    const discovery=startResponder({tcpPort:port,ready:()=>fs.existsSync(path.join(process.env.TOGETHER_SHARE_DIR||path.join(__dirname,'share'),'save-info.json')),onError:error=>console.error('Поиск комнат:',error.message)});
+    server.on('close',()=>{try{discovery.close();}catch(_){}});
     console.log('\ninZOI Together — тестовый сервер чата\nКод комнаты: ' + code);
     console.log('На этом ПК: http://127.0.0.1:' + port);
     for (const list of Object.values(os.networkInterfaces())) for (const item of list || []) {

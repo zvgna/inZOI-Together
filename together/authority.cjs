@@ -20,7 +20,7 @@ function createAuthority({now = Date.now} = {}) {
   }
   function handle(player, players, method, route, data) {
     active(players);
-    if (route === '/authority' && method === 'GET') return {enabled:!!owner, actor:owner?.actor || null, epoch:owner?.epoch || null};
+    if (route === '/authority' && method === 'GET') return {enabled:!!owner, actor:owner?.actor || null, hostActor:owner?.hostActor || null, epoch:owner?.epoch || null};
     if (route === '/authority' && method === 'POST') {
       if (player.slot !== 1) fail(403, 'Только хост передаёт управление');
       if (data.enabled === false) { revoke(); return {enabled:false}; }
@@ -32,19 +32,22 @@ function createAuthority({now = Date.now} = {}) {
         owner = {actor:guest.character.id,hostActor:player.character.id,hostToken:player.token,guestToken:guest.token,epoch:crypto.randomBytes(16).toString('hex'),expires:now()+5000};
       }
       owner.expires = now()+5000;
-      return {enabled:true,actor:owner.actor,epoch:owner.epoch};
+      return {enabled:true,actor:owner.actor,hostActor:owner.hostActor,epoch:owner.epoch};
     }
     if (!owner) fail(409, 'Хост не подтвердил передачу управления');
     if (route === '/authority/commands' && method === 'POST') {
-      if (player.slot !== 2) fail(403, 'Команды передаёт гость');
       if (data.epoch !== owner.epoch) fail(409, 'Передача управления устарела');
       if (typeof data.id !== 'string' || !/^[a-f0-9]{32}$/.test(data.id)) fail(400, 'Некорректный ID команды');
       const key = owner.epoch + ':' + data.id;
       if (commands.has(key)) return {...commands.get(key)};
       if (data.kind !== 'interaction' || typeof data.bag !== 'string' || !/^[A-Za-z0-9_]{1,160}$/.test(data.bag) || !Number.isSafeInteger(data.target) || data.target <= 0) fail(400, 'Некорректная команда');
+      const actor = player.slot === 1 ? owner.hostActor : owner.actor;
+      const busy = [...commands.values()].find(c => c.epoch === owner.epoch && ['pending','dispatched','unknown'].includes(c.state) &&
+        (c.actor === actor || c.target === actor || c.actor === data.target || c.target === data.target));
+      if (busy) fail(409, 'Персонаж или цель уже заняты первым взаимодействием');
       if ([...commands.values()].filter(c => c.epoch === owner.epoch && ['pending','dispatched'].includes(c.state)).length >= 16) fail(429, 'Дождитесь выполнения очереди');
       if (commands.size >= 2048) fail(429, 'Лимит команд сеанса достигнут');
-      const command = {id:data.id,epoch:owner.epoch,actor:owner.actor,target:data.target,bag:data.bag,kind:data.kind,state:'pending',created:now()};
+      const command = {id:data.id,epoch:owner.epoch,actor,slot:player.slot,target:data.target,bag:data.bag,kind:data.kind,state:'pending',created:now()};
       commands.set(key,command);
       return {...command};
     }

@@ -14,7 +14,6 @@ function fixture() {
 test('authority derives actor from guest ownership, rejects role inversion and deduplicates commands',()=>{
   const {call,command}=fixture();
   assert.throws(()=>call(2,'POST','/authority',{enabled:true}),{status:403});
-  assert.throws(()=>call(1,'POST','/authority/commands',command),{status:403});
   assert.equal(call(2,'POST','/authority/commands',command).actor,22);
   call(2,'POST','/authority/commands',command);
   assert.equal(call(1,'GET','/authority/commands').commands.length,1);
@@ -43,4 +42,26 @@ test('ownership changes and malformed commands cannot cross the authority bounda
   assert.throws(()=>call(2,'POST','/authority/commands',{...command,bag:'../anything'}),{status:400});
   players.get(2).character={id:33};
   assert.equal(call(1,'GET','/authority').enabled,false);
+});
+
+test('the first request reserves both participants, and host completion releases them',()=>{
+  const {call,command}=fixture();
+  const first=call(2,'POST','/authority/commands',command);
+  const counter={...command,id:'b'.repeat(32),target:22};
+  assert.throws(()=>call(1,'POST','/authority/commands',counter),{status:409});
+  call(1,'POST','/authority/result',{...first,state:'dispatched'});
+  assert.throws(()=>call(1,'POST','/authority/commands',counter),{status:409});
+  call(1,'POST','/authority/result',{...first,state:'completed'});
+  const next=call(1,'POST','/authority/commands',counter);
+  assert.equal(next.actor,11);assert.equal(next.target,22);assert.equal(next.slot,1);
+});
+
+test('rejected proposals release participants; an uncertain dispatch keeps them reserved',()=>{
+  const {call,command}=fixture();
+  const first=call(2,'POST','/authority/commands',command);
+  call(1,'POST','/authority/result',{...first,state:'rejected'});
+  const next=call(1,'POST','/authority/commands',{...command,id:'b'.repeat(32),target:22});
+  call(1,'POST','/authority/result',{...next,state:'dispatched'});
+  call(1,'POST','/authority/result',{...next,state:'unknown'});
+  assert.throws(()=>call(2,'POST','/authority/commands',{...command,id:'c'.repeat(32)}),{status:409});
 });

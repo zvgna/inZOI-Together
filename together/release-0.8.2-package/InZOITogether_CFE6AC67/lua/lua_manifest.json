@@ -1,0 +1,19 @@
+{
+	"bindings":
+	{
+		"B2": [
+			{
+				"type": "Zoi",
+				"key": "*",
+				"script": "Zoi.PhoneProbe"
+			}
+		],
+		"B1": [
+			{
+				"type": "Zoi",
+				"key": "*",
+				"script": "Zoi.PhoneBridge"
+			}
+		]
+	}
+}

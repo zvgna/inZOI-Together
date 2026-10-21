@@ -19,7 +19,11 @@ label { display:block; width:100%; margin:10px 0; font-size:14px; color:#c3d2df;
 #title-text { font-size:20px; font-weight:bold; }
 #resize-handle { position:absolute; right:0; bottom:0; width:16px; height:16px; cursor:nwse-resize; background:linear-gradient(135deg,transparent 50%,#66869a 51%,#66869a 60%,transparent 61%); }
 #close-btn { padding:0 8px; background:transparent; border:0; font-size:24px; color:#edf4fa; }
-#content { position:absolute; top:56px; bottom:190px; left:0; right:0; padding:0 18px 16px; overflow-y:scroll; overflow-x:hidden; }
+#content { position:absolute; top:56px; bottom:76px; left:0; right:0; padding:0 18px 16px; overflow-y:scroll; overflow-x:hidden; }
+#app-root[data-connected="true"] #content { bottom:190px; }
+#host-save-list { max-height:210px; overflow-y:scroll; margin:8px 0; }
+.save-choice { display:block; width:100%; margin:5px 0; text-align:left; font-size:14px; }
+.save-choice.selected { background:#466878; border-color:#82d9c8; }
 #app-root { height:760px !important; min-width:440px; }
 #connection-actions { position:absolute; bottom:12px; left:18px; right:18px; padding-top:8px; background:#101d2b; }
 #reconnect { display:block; width:100%; margin-top:6px; font-size:13px; }

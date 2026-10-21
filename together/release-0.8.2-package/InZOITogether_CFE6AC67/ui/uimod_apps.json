@@ -1,0 +1,9 @@
+{
+	"apps": [
+		{
+			"name": "together_chat",
+			"default": true,
+			"enabled": true
+		}
+	]
+}

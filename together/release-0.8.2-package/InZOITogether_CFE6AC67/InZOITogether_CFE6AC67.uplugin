@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "InZOITogether",
+	"Description": "Experimental LAN chat and two-household cooperation prototype",
+	"Category": "Other",
+	"CreatedBy": "ModAuthor",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"ModCode": "CFE6AC67",
+	"MigrationState": 5
+}

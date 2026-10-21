@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>inZOI Together</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app-root">
+  <div id="title-bar"><span id="title-text">inZOI Together</span><div id="title-buttons"><span id="minimize-btn" style="display:none">_</span><button id="close-btn" type="button" aria-label="Закрыть">×</button></div></div>
+  <div id="content">
+    <p class="subtitle">Комната по локальной сети · тест 0.8.1</p>
+    <div id="status" role="status">Загрузка интерфейса…</div>
+    <form id="connect-form">
+      <button id="list-host-saves" type="button">Хост: выбрать сохранение</button>
+      <div id="host-save-list" role="group" aria-label="Сохранения хоста"></div>
+      <button id="prepare-host" type="button">Загрузить сохранение и создать комнату</button>
+      <label>Адрес сервера<input id="server" value="http://127.0.0.1:11214" maxlength="200" required></label>
+      <button id="check-network" type="button">Проверить связь с хостом</button>
+      <button id="find-host" type="button">Найти хоста в Radmin / LAN</button>
+      <p id="network-status" class="footnote"></p>
+      <div class="slot-label">Игрок</div>
+      <div class="slot-picker"><button id="slot-one" class="slot-button selected" type="button" aria-pressed="true">Хост</button><button id="slot-two" class="slot-button" type="button" aria-pressed="false">Гость</button></div>
+      <input id="slot" type="hidden" value="1">
+      <label>Имя в чате<input id="name" value="Хост" maxlength="40" required></label>
+      <label>Код комнаты<input id="code" type="password" maxlength="100" autocomplete="off" required></label>
+    </form>
+    <section id="chat" hidden>
+      <div class="row presence"><span id="players"></span><button id="disconnect" type="button">Отключиться</button></div>
+      <label>Код комнаты для гостя<input id="share-room-code" readonly aria-label="Код комнаты для гостя"></label>
+      <section id="room-info">
+        <h3>Управление в игре хоста · тест</h3>
+        <button id="authority-start" type="button">Передать персонажа гостю</button>
+        <button id="authority-stop" type="button">Вернуть управление ИИ</button>
+        <button id="authority-list" type="button">Получить действия с другим игроком</button>
+        <select id="authority-bag" aria-label="Действие в мире хоста"></select>
+        <button id="authority-send" type="button">Выполнить у хоста</button>
+        <p id="authority-status" class="footnote">Тест выполнения действий в мире хоста. Обычные клики гостя и состояние его мира ещё не синхронизируются.</p>
+        <h3>Взаимодействия</h3>
+        <button id="action-greet" type="button">Поприветствовать</button>
+        <button id="action-handshake" type="button">Пожать руку</button>
+        <button id="action-hug" type="button">Обнять</button>
+        <p id="interaction-status" class="footnote">Действие проверяет хост. Для начала завершите текущие дела обоих персонажей.</p>
+        <label>Персонаж гостя<select id="guest-character"></select></label>
+        <button id="install-guest" type="button">Скачать сохранение и войти гостем</button>
+        <button id="position-toggle" type="button">Включить синхронизацию координат</button>
+        <p id="position-status" class="footnote">Карта и персонажи берутся из сохранения комнаты. Пока синхронизируются только координаты.</p>
+        <h3>Подключение второго игрока</h3>
+        <button id="lan-address" type="button">Wi-Fi / LAN</button>
+        <button id="radmin-address" type="button">Radmin</button>
+        <button id="hamachi-address" type="button">Hamachi</button>
+        <input id="guest-address" readonly aria-label="Адрес для гостя">
+        <h3>Стартовое сохранение</h3>
+        <p id="save-details">Получение сведений…</p>
+        <button id="download-save" type="button">Получить ссылку на сохранение</button>
+        <a id="save-link" hidden>Скачать копию сохранения</a>
+        <input id="save-url" hidden readonly aria-label="Ссылка на сохранение">
+        <p class="footnote">Доставка в телефон проходит проверку. Синхронизация мира ещё не подключена.</p>
+      </section>
+      <div id="legacy-chat" hidden>
+      <div class="tabs"><button id="global-tab" type="button" class="active">Общий чат</button><button id="phone-tab" type="button">Личные сообщения</button></div>
+      <div id="phone-note" hidden>Переписка со вторым игроком. Это отдельное окно мода; игровой телефон пока не подключён.</div>
+      <div id="messages" role="log" aria-live="polite"></div>
+      </div>
+    </section>
+    <p class="footnote">Синхронизация мира и управление второй семьёй ещё не реализованы. F2 — открыть окно в игре.</p>
+  </div>
+  <div id="connection-actions">
+    <button class="primary" id="connect" type="button">Подключиться</button>
+    <button id="cancel-reconnect" type="button" style="display:none">Отменить восстановление</button>
+    <button id="reconnect" type="button" hidden>Переподключить это место</button>
+  </div>
+  <div id="phone-composer" hidden>
+    <label for="text">Сообщение в телефон второго игрока</label>
+    <form id="send-form"><input id="text" maxlength="1000" placeholder="Написать сообщение…" aria-label="Сообщение" required><button class="primary" id="send" type="button">Отправить</button></form>
+    <p id="phone-status" class="footnote">Переписка отображается в игровом телефоне.</p>
+  </div>
+</div>
+<script src="coui://inzoi/cohtml.js"></script>
+<script src="coui://inzoi/mod/inzoi-sdk.js"></script>
+<script src="window.js"></script>
+<script>window.onerror = function (message) { document.getElementById('status').textContent = 'Ошибка: ' + message; };</script>
+<script src="interactions.js"></script>
+<script src="connection.js"></script>
+<script src="authority.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

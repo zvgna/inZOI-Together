@@ -111,9 +111,9 @@
             var y = root.style.top  ? parseFloat(root.style.top)  : root.offsetTop;
             cli('uimod.cfg_save', {
                 mod_id:  MOD_ID,
-                section: CFG_SECTION,
-                key:     CFG_KEY,
-                value:   JSON.stringify({ x: x, y: y, w: sz.w, h: sz.h, minimized: !!root._minimized })
+                Section: CFG_SECTION,
+                Key:     CFG_KEY,
+                Value:   JSON.stringify({ x: x, y: y, w: sz.w, h: sz.h, minimized: !!root._minimized })
             });
         } catch (e) {}
     }
@@ -185,7 +185,7 @@
     function loadWindowState() {
         function reveal() { if (document.body) document.body.style.visibility = ''; _reportContentRect(); }
         try {
-            var p = cli('uimod.cfg_load', { mod_id: MOD_ID, section: CFG_SECTION, key: CFG_KEY });
+            var p = cli('uimod.cfg_load', { mod_id: MOD_ID, Section: CFG_SECTION, Key: CFG_KEY });
             if (p && typeof p.then === 'function') {
                 p.then(function (res) {
                     var raw = (res && (res.value || res.data && res.data.value)) || null;

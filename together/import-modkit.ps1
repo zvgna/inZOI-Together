@@ -12,7 +12,7 @@ function Invoke-ModKitTool([string]$name, [hashtable]$arguments) {
     if ($response.error -or $response.result.isError) { throw $raw }
     Write-Output "$name : $($response.result.content.text)"
 }
-foreach ($filename in 'index.html', 'styles.css', 'app.js', 'interactions.js', 'connection.js', 'window.js') {
+foreach ($filename in 'index.html', 'styles.css', 'app.js', 'interactions.js', 'connection.js', 'authority.js', 'window.js') {
     $content = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot "ui\$filename"))
     Invoke-ModKitTool 'modkit_write_uimod_file' @{ plugin = $plugin; app = $app; path = $filename; content = $content; defer_refresh = $true }
 }
